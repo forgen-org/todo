@@ -108,10 +108,8 @@ fn App() -> Html {
             <h2>{ "In Progress" }</h2>
             <ul>
             {todo_list.clone().in_progress.iter().map(|task| {
-                let task_index = task.index.clone();
+                let task_index = task.index;
                 let complete_task = complete_task.clone().reform(move |_| task_index);
-
-                let task_index = task.index.clone();
                 let remove_task = remove_task.clone().reform(move |_| task_index);
 
                 html! {

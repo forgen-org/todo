@@ -16,7 +16,7 @@ impl TodoListStore for LocalStore {
 
     async fn push(&self, events: &[TodoListEvent]) -> Result<()> {
         let mut current_events: Vec<TodoListEvent> = LocalStorage::get("events").unwrap_or(vec![]);
-        current_events.extend_from_slice(&events);
+        current_events.extend_from_slice(events);
         LocalStorage::set("events", current_events)?;
         Ok(())
     }
