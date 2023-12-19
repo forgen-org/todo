@@ -21,11 +21,11 @@ pub trait Projection: Serialize + for<'de> Deserialize<'de> {
 
 #[async_trait]
 pub trait Command<R>: for<'de> Deserialize<'de> {
-    async fn execute(&self, services: &R) -> Result<()>;
+    async fn execute(&self, runtime: &R) -> Result<()>;
 }
 
 #[async_trait]
 pub trait Query<R>: for<'de> Deserialize<'de> {
     type Output: Projection;
-    async fn execute(&self, services: &R) -> Result<Self::Output>;
+    async fn execute(&self, runtime: &R) -> Result<Self::Output>;
 }

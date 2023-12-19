@@ -7,16 +7,16 @@ use framework::*;
 use serde::Deserialize;
 
 // Shared command logic
-async fn pull_and_push<R>(services: &R, message: &TodoListMessage) -> Result<()>
+async fn pull_and_push<R>(runtime: &R, message: &TodoListMessage) -> Result<()>
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
-    let mut todolist = services.pull().await?;
+    let mut todolist = runtime.pull().await?;
     let new_events = message.send(&todolist)?;
     new_events.apply(&mut todolist);
     let projection = TodoListProjection::project(&todolist);
-    services.push(&new_events).await?;
-    services.save(&projection).await?;
+    runtime.push(&new_events).await?;
+    runtime.save(&projection).await?;
     Ok(())
 }
 
@@ -30,8 +30,8 @@ impl<R> Command<R> for AddTaskCommand
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
-    async fn execute(&self, services: &R) -> Result<()> {
-        pull_and_push(services, &TodoListMessage::AddTask(self.name.clone())).await?;
+    async fn execute(&self, runtime: &R) -> Result<()> {
+        pull_and_push(runtime, &TodoListMessage::AddTask(self.name.clone())).await?;
         Ok(())
     }
 }
@@ -46,8 +46,8 @@ impl<R> Command<R> for RemoveTaskCommand
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
-    async fn execute(&self, services: &R) -> Result<()> {
-        pull_and_push(services, &TodoListMessage::RemoveTask(self.index)).await?;
+    async fn execute(&self, runtime: &R) -> Result<()> {
+        pull_and_push(runtime, &TodoListMessage::RemoveTask(self.index)).await?;
         Ok(())
     }
 }
@@ -62,8 +62,8 @@ impl<R> Command<R> for CompleteTaskCommand
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
-    async fn execute(&self, services: &R) -> Result<()> {
-        pull_and_push(services, &TodoListMessage::CompleteTask(self.index)).await?;
+    async fn execute(&self, runtime: &R) -> Result<()> {
+        pull_and_push(runtime, &TodoListMessage::CompleteTask(self.index)).await?;
         Ok(())
     }
 }
