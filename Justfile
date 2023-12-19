@@ -1,7 +1,7 @@
-dev-axum: 
+axium: 
     cd clients/axum && cargo watch -x run
     
-dev-yew: 
+yew: 
     cd clients/yew && trunk serve
 
 deps:

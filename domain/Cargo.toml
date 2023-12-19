@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 framework = { path = "../crates/framework" }
-serde = "1.0.193"
+serde = { version = "1.0", features = ["derive"] }

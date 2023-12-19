@@ -1,6 +1,8 @@
 use crate::{ports::TodoListRepository, projections::TodoListProjection};
 use framework::*;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 pub struct GetTodoListQuery {}
 
 #[async_trait]

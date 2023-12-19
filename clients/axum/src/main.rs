@@ -1,59 +1,62 @@
 mod runtime;
 
+use application::{
+    commands::{AddTaskCommand, CompleteTaskCommand, RemoveTaskCommand},
+    ports::*,
+    queries::GetTodoListQuery,
+};
 use axum::{
-    http::StatusCode,
+    extract::State,
     routing::{get, post},
     Json, Router,
 };
-use serde::{Deserialize, Serialize};
+use framework::*;
+use runtime::Runtime;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
-    // initialize tracing
     tracing_subscriber::fmt::init();
 
-    // build our application with a route
-    let app = Router::new()
-        // `GET /` goes to `root`
-        .route("/", get(root))
-        // `POST /users` goes to `create_user`
-        .route("/users", post(create_user));
+    let runtime = Arc::new(Runtime::default());
 
-    // run our app with hyper, listening globally on port 3000
+    let app = Router::new()
+        .route("/todolist", get(get_todolist))
+        .route("/todolist/add", post(handle_command::<AddTaskCommand>))
+        .route(
+            "/todolist/remove",
+            post(handle_command::<RemoveTaskCommand>),
+        )
+        .route(
+            "/todolist/complete",
+            post(handle_command::<CompleteTaskCommand>),
+        )
+        .with_state(runtime);
+
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
-// basic handler that responds with a static string
-async fn root() -> &'static str {
-    "Hello, World!"
+async fn get_todolist(
+    State(state): State<Arc<Runtime>>,
+) -> Result<Json<TodoListProjection>, String> {
+    let query = GetTodoListQuery {};
+    query
+        .execute(state.as_ref())
+        .await
+        .map(Json)
+        .map_err(|err| err.to_string())
 }
 
-async fn create_user(
-    // this argument tells axum to parse the request body
-    // as JSON into a `CreateUser` type
-    Json(payload): Json<CreateUser>,
-) -> (StatusCode, Json<User>) {
-    // insert your application logic here
-    let user = User {
-        id: 1337,
-        username: payload.username,
-    };
-
-    // this will be converted into a JSON response
-    // with a status code of `201 Created`
-    (StatusCode::CREATED, Json(user))
-}
-
-// the input to our `create_user` handler
-#[derive(Deserialize)]
-struct CreateUser {
-    username: String,
-}
-
-// the output to our `create_user` handler
-#[derive(Serialize)]
-struct User {
-    id: u64,
-    username: String,
+async fn handle_command<T>(
+    State(state): State<Arc<Runtime>>,
+    Json(command): Json<T>,
+) -> Result<(), String>
+where
+    T: Command<Runtime>,
+{
+    command
+        .execute(state.as_ref())
+        .await
+        .map_err(|err| err.to_string())
 }

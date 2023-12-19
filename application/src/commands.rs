@@ -4,6 +4,7 @@ use crate::{
 };
 use domain::todolist_message::TodoListMessage;
 use framework::*;
+use serde::Deserialize;
 
 // Shared command logic
 async fn pull_and_push<R>(services: &R, message: &TodoListMessage) -> Result<()>
@@ -19,6 +20,7 @@ where
     Ok(())
 }
 
+#[derive(Deserialize)]
 pub struct AddTaskCommand {
     pub name: String,
 }
@@ -34,6 +36,7 @@ where
     }
 }
 
+#[derive(Deserialize)]
 pub struct RemoveTaskCommand {
     pub index: usize,
 }
@@ -49,6 +52,7 @@ where
     }
 }
 
+#[derive(Deserialize)]
 pub struct CompleteTaskCommand {
     pub index: usize,
 }
