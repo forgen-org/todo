@@ -1,4 +1,4 @@
-#[derive(Debug, Default)]
+#[derive(Default, Debug)]
 pub struct TodoList {
     pub tasks: Vec<Task>,
 }

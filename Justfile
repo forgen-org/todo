@@ -9,3 +9,4 @@ deps:
 
 lint: 
     cargo clippy
+    python3 sort_derive.py
