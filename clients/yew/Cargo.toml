@@ -1,0 +1,15 @@
+[package]
+name = "yew-client"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+application = { path = "../../application" }
+framework = { path = "../../crates/framework" }
+gloo-console = "0.3.0"
+services = { path = "../../services", features = ["local_storage"] }
+wasm-bindgen-futures = "0.4.39"
+web-sys = "0.3.66"
+yew = { git = "https://github.com/yewstack/yew/", features = ["csr"] }
