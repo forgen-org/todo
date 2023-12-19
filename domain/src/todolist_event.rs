@@ -29,3 +29,52 @@ impl Events<TodoList> for Vec<TodoListEvent> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_task_addition() {
+        let mut todo_list = TodoList::default();
+        let events = vec![TodoListEvent::TaskAdded("Test Task".to_string())];
+
+        events.apply(&mut todo_list);
+
+        assert_eq!(todo_list.tasks.len(), 1);
+        assert_eq!(todo_list.tasks[0].name, "Test Task");
+        assert_eq!(todo_list.tasks[0].completed, Completed::No);
+    }
+
+    #[test]
+    fn test_task_removal() {
+        let mut todo_list = TodoList {
+            tasks: vec![Task {
+                name: "Test Task".to_string(),
+                completed: Completed::No,
+            }],
+        };
+        let events = vec![TodoListEvent::TaskRemoved(0)];
+
+        events.apply(&mut todo_list);
+
+        assert!(todo_list.tasks.is_empty());
+    }
+
+    #[test]
+    fn test_task_completion() {
+        let mut todo_list = TodoList {
+            tasks: vec![Task {
+                name: "Test Task".to_string(),
+                completed: Completed::No,
+            }],
+        };
+        let events = vec![TodoListEvent::TaskCompleted(0)];
+
+        events.apply(&mut todo_list);
+
+        assert_eq!(todo_list.tasks[0].completed, Completed::Yes);
+    }
+
+    // Additional tests for error handling can be added here
+}

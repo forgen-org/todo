@@ -4,9 +4,13 @@ axium:
 yew: 
     cd clients/yew && trunk serve
 
+test:
+    cargo test
+
 deps:
     cargo +nightly udeps
 
 lint: 
+    cargo check
     cargo clippy
     python3 sort_derive.py

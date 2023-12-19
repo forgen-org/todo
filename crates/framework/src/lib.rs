@@ -26,6 +26,6 @@ pub trait Command<R>: for<'de> Deserialize<'de> {
 
 #[async_trait]
 pub trait Query<R>: for<'de> Deserialize<'de> {
-    type Output: Projection;
+    type Output;
     async fn execute(&self, runtime: &R) -> Result<Self::Output>;
 }
