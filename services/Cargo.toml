@@ -9,6 +9,8 @@ edition = "2021"
 application = { path = "../application" }
 framework = { path = "../crates/framework" }
 gloo-storage = { version = "0.3.0", optional = true }
+tokio = { version = "1.35.0", optional = true }
 
 [features]
-local_storage = ["dep:gloo-storage"]
+localstore = ["dep:gloo-storage"]
+memstore = ["dep:tokio"]

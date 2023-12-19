@@ -1,4 +1,5 @@
-#[cfg(feature = "local_storage")]
-mod local_storage;
+#[cfg(feature = "localstore")]
+pub mod localstore;
 
-pub struct Services {}
+#[cfg(feature = "memstore")]
+pub mod memstore;

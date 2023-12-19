@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.75"
 async-trait = "0.1.74"
+auto-delegate = "0.0.9"
 thiserror = "1.0.51"

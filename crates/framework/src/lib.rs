@@ -1,6 +1,8 @@
 pub use anyhow::{anyhow, Result};
 pub use async_trait::async_trait;
+pub use auto_delegate::*;
 pub use thiserror::Error;
+pub extern crate auto_delegate;
 
 pub trait Message<S> {
     type Events: Events<S>;

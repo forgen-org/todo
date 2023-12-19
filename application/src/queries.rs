@@ -1,4 +1,4 @@
-use crate::{projections::TodoListProjection, services::TodoListRepository};
+use crate::{ports::TodoListRepository, projections::TodoListProjection};
 use framework::*;
 
 pub struct GetTodoListQuery {}

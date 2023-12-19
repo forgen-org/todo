@@ -1,27 +1,29 @@
+mod runtime;
+
 use application::{
     commands::{AddTaskCommand, CompleteTaskCommand, RemoveTaskCommand},
     projections::TodoListProjection,
 };
 use framework::*;
-use services::Services;
+use runtime::Runtime;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 #[function_component]
 fn App() -> Html {
     let input_ref = use_node_ref();
-    let services = use_memo((), |_| Services {});
+    let runtime = use_memo((), |_| Runtime::default());
     let todo_list = use_state(TodoListProjection::default);
 
     let fetch = {
-        let services = services.clone();
+        let runtime = runtime.clone();
         let todo_list = todo_list.clone();
         Callback::from(move |_: ()| {
-            let services = services.clone();
+            let runtime = runtime.clone();
             let todo_list = todo_list.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let query = application::queries::GetTodoListQuery {};
-                let data = query.execute(services.as_ref()).await.unwrap();
+                let data = query.execute(runtime.as_ref()).await.unwrap();
                 todo_list.set(data);
             })
         })
@@ -36,17 +38,17 @@ fn App() -> Html {
     let add_task = {
         let fetch = fetch.clone();
         let input_ref = input_ref.clone();
-        let services = services.clone();
+        let runtime = runtime.clone();
 
         Callback::from(move |_| {
             let fetch = fetch.clone();
             let input_ref = input_ref.clone();
-            let services = services.clone();
+            let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
                 let input = input_ref.cast::<HtmlInputElement>().unwrap();
                 let name = input.value();
-                let res = AddTaskCommand { name }.execute(services.as_ref()).await;
+                let res = AddTaskCommand { name }.execute(runtime.as_ref()).await;
 
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
@@ -60,15 +62,15 @@ fn App() -> Html {
 
     let complete_task = {
         let fetch = fetch.clone();
-        let services = services.clone();
+        let runtime = runtime.clone();
 
         Callback::from(move |index: usize| {
             let fetch = fetch.clone();
-            let services = services.clone();
+            let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
                 let res = CompleteTaskCommand { index }
-                    .execute(services.as_ref())
+                    .execute(runtime.as_ref())
                     .await;
 
                 if let Err(err) = res {
@@ -82,14 +84,14 @@ fn App() -> Html {
 
     let remove_task = {
         let fetch = fetch.clone();
-        let services = services.clone();
+        let runtime = runtime.clone();
 
         Callback::from(move |index: usize| {
             let fetch = fetch.clone();
-            let services = services.clone();
+            let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
-                let res = RemoveTaskCommand { index }.execute(services.as_ref()).await;
+                let res = RemoveTaskCommand { index }.execute(runtime.as_ref()).await;
 
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());

@@ -1,5 +1,5 @@
 [package]
-name = "yew-client"
+name = "axum-client"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 application = { path = "../../application" }
+axum = "0.7.2"
 framework = { path = "../../crates/framework" }
-gloo-console = "0.3.0"
-services = { path = "../../services", features = ["localstore"] }
-wasm-bindgen-futures = "0.4.39"
-web-sys = "0.3.66"
-yew = { git = "https://github.com/yewstack/yew/", features = ["csr"] }
+serde = "1.0.193"
+services = { path = "../../services", features = ["memstore"] }
+tokio = { version = "1", features = ["full"] }
+tracing-subscriber = "0.3.18"
