@@ -28,6 +28,7 @@ fn App() -> Html {
             })
         })
     };
+
     {
         let fetch = fetch.clone();
         use_effect_with((), move |_| {
@@ -107,20 +108,19 @@ fn App() -> Html {
             <h1>{ "Todo List" }</h1>
             <h2>{ "In Progress" }</h2>
             <ul>
-            {todo_list.clone().in_progress.iter().map(|task| {
-                let task_index = task.index;
-                let complete_task = complete_task.clone().reform(move |_| task_index);
-                let remove_task = remove_task.clone().reform(move |_| task_index);
+                {todo_list.clone().in_progress.iter().map(|task| {
+                    let task_index = task.index;
+                    let complete_task = complete_task.clone().reform(move |_| task_index);
+                    let remove_task = remove_task.clone().reform(move |_| task_index);
 
-                html! {
-                    <li key={task.index}>
-                        <input type="checkbox" onclick={complete_task} />
-                        { &task.name }
-                        <a onclick={remove_task}>{ "❌" }</a>
-                    </li>
-                }
-        }
-        ).collect::<Html>()}
+                    html! {
+                        <li key={task.index}>
+                            <input type="checkbox" onclick={complete_task} />
+                            { &task.name }
+                            <a onclick={remove_task}>{ "❌" }</a>
+                        </li>
+                    }
+                }).collect::<Html>()}
             </ul>
             <h2>{ "Completed" }</h2>
             {todo_list.clone().completed.iter().map(|task| html! {

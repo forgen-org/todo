@@ -10,12 +10,14 @@ pub enum TodoListMessage {
 
 impl Message<TodoList> for TodoListMessage {
     type Events = Vec<TodoListEvent>;
-    fn send(&self, _state: &TodoList) -> Result<Self::Events> {
+    type Error = TodoListError;
+
+    fn send(&self, _state: &TodoList) -> Result<Self::Events, Self::Error> {
         let mut events = Vec::new();
         match self {
             TodoListMessage::AddTask(name) => {
                 if name.is_empty() {
-                    return Err(TodoListError::EmptyTaskName.into());
+                    return Err(TodoListError::EmptyTaskName);
                 }
                 events.push(TodoListEvent::TaskAdded(name.clone()));
             }
@@ -50,16 +52,15 @@ mod tests {
         }
     }
 
-    // TODO: maybe we don't use anyhow because it offuscates the error type
-    // #[test]
-    // fn test_add_empty_task() {
-    //     let todo_list = TodoList::default();
-    //     let message = TodoListMessage::AddTask("".to_string());
+    #[test]
+    fn test_add_empty_task() {
+        let todo_list = TodoList::default();
+        let message = TodoListMessage::AddTask("".to_string());
 
-    //     let result = message.send(&todo_list);
+        let result = message.send(&todo_list);
 
-    //     assert!(matches!(result, anyhow!(TodoListError::EmptyTaskName)));
-    // }
+        assert!(matches!(result, Err(TodoListError::EmptyTaskName)));
+    }
 
     #[test]
     fn test_remove_task() {

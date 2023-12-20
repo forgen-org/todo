@@ -7,7 +7,7 @@ use framework::*;
 use serde::Deserialize;
 
 // Shared command logic
-async fn pull_and_push<R>(runtime: &R, message: &TodoListMessage) -> Result<()>
+async fn pull_and_push<R>(runtime: &R, message: &TodoListMessage) -> AnyResult<()>
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
@@ -30,7 +30,9 @@ impl<R> Command<R> for AddTaskCommand
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
-    async fn execute(&self, runtime: &R) -> Result<()> {
+    // type Error = AnyError;
+
+    async fn execute(&self, runtime: &R) -> AnyResult<()> {
         pull_and_push(runtime, &TodoListMessage::AddTask(self.name.clone())).await?;
         Ok(())
     }
@@ -46,7 +48,7 @@ impl<R> Command<R> for RemoveTaskCommand
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
-    async fn execute(&self, runtime: &R) -> Result<()> {
+    async fn execute(&self, runtime: &R) -> Result<(), AnyError> {
         pull_and_push(runtime, &TodoListMessage::RemoveTask(self.index)).await?;
         Ok(())
     }
@@ -62,7 +64,7 @@ impl<R> Command<R> for CompleteTaskCommand
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
-    async fn execute(&self, runtime: &R) -> Result<()> {
+    async fn execute(&self, runtime: &R) -> AnyResult<()> {
         pull_and_push(runtime, &TodoListMessage::CompleteTask(self.index)).await?;
         Ok(())
     }

@@ -10,13 +10,13 @@ pub struct MemStore {
 
 #[async_trait]
 impl TodoListStore for MemStore {
-    async fn pull(&self) -> Result<TodoList> {
+    async fn pull(&self) -> AnyResult<TodoList> {
         let mut todolist = TodoList::default();
         self.events.lock().await.apply(&mut todolist);
         Ok(todolist)
     }
 
-    async fn push(&self, new_events: &[TodoListEvent]) -> Result<()> {
+    async fn push(&self, new_events: &[TodoListEvent]) -> AnyResult<()> {
         self.events.lock().await.extend_from_slice(new_events);
         Ok(())
     }
@@ -24,11 +24,11 @@ impl TodoListStore for MemStore {
 
 #[async_trait]
 impl TodoListRepository for MemStore {
-    async fn fetch(&self) -> Result<TodoListProjection> {
+    async fn fetch(&self) -> AnyResult<TodoListProjection> {
         Ok(self.projection.lock().await.to_owned())
     }
 
-    async fn save(&self, projection: &TodoListProjection) -> Result<()> {
+    async fn save(&self, projection: &TodoListProjection) -> AnyResult<()> {
         let mut current_projection = self.projection.lock().await;
         *current_projection = projection.clone();
         Ok(())

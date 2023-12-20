@@ -12,7 +12,7 @@ where
 {
     type Output = TodoListProjection;
 
-    async fn execute(&self, runtime: &R) -> Result<Self::Output> {
+    async fn execute(&self, runtime: &R) -> AnyResult<TodoListProjection> {
         runtime.fetch().await
     }
 }
