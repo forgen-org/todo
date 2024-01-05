@@ -1,4 +1,4 @@
-pub mod commands;
-pub mod ports;
-pub mod projections;
-pub mod queries;
+pub mod command;
+pub mod port;
+pub mod projection;
+pub mod query;

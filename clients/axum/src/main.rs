@@ -1,10 +1,6 @@
 mod runtime;
 
-use application::{
-    commands::{AddTaskCommand, CompleteTaskCommand, RemoveTaskCommand},
-    ports::*,
-    queries::GetTodoListQuery,
-};
+use application::{command::Command, port::*, query::GetTodoListQuery};
 use axum::{
     extract::State,
     routing::{get, post},
@@ -22,15 +18,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/todolist", get(get_todolist))
-        .route("/todolist/add", post(handle_command::<AddTaskCommand>))
-        .route(
-            "/todolist/remove",
-            post(handle_command::<RemoveTaskCommand>),
-        )
-        .route(
-            "/todolist/complete",
-            post(handle_command::<CompleteTaskCommand>),
-        )
+        .route("/todolist", post(handle_command))
         .with_state(runtime);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -48,13 +36,10 @@ async fn get_todolist(
         .map_err(|err| err.to_string())
 }
 
-async fn handle_command<T>(
+async fn handle_command(
     State(state): State<Arc<Runtime>>,
-    Json(command): Json<T>,
-) -> Result<(), String>
-where
-    T: Command<Runtime>,
-{
+    Json(command): Json<Command>,
+) -> Result<(), String> {
     command
         .execute(state.as_ref())
         .await

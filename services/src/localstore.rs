@@ -1,4 +1,4 @@
-use application::ports::*;
+use application::port::*;
 use framework::*;
 use gloo_storage::{LocalStorage, Storage};
 
@@ -10,7 +10,7 @@ impl TodoListStore for LocalStore {
     async fn pull(&self) -> AnyResult<TodoList> {
         let events: Vec<TodoListEvent> = LocalStorage::get("events").unwrap_or(vec![]);
         let mut state = TodoList::default();
-        events.apply(&mut state);
+        state.apply(&events);
         Ok(state)
     }
 

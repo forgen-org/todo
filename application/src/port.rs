@@ -1,5 +1,5 @@
-pub use crate::projections::TodoListProjection;
-pub use domain::{todolist::TodoList, todolist_event::TodoListEvent};
+pub use crate::projection::TodoListProjection;
+pub use domain::{todolist_event::TodoListEvent, todolist_state::TodoList};
 use framework::*;
 
 #[async_trait]
