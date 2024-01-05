@@ -123,7 +123,7 @@ fn App() -> Html {
                 }).collect::<Html>()}
             </ul>
             <h2>{ "Completed" }</h2>
-            {todo_list.clone().completed.iter().map(|(_, task_name)| html! {
+            {todo_list.clone().completed.values().map(|task_name| html! {
                 <li><input type="checkbox" checked={true} disabled={true} /> { &task_name }</li>
             }).collect::<Html>()}
             <input ref={input_ref} type="text" id="task" name="task" />

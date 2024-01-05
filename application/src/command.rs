@@ -39,11 +39,17 @@ where
 {
     async fn execute(&self, runtime: &R) -> AnyResult<()> {
         let message = self.try_into()?;
+
+        // Pull the current state and apply the message
         let todolist = TodoListStore::pull(runtime).await?;
         let new_events = todolist.send(&message)?;
-        let projection = TodoListRepository::fetch(runtime).await?;
         TodoListStore::push(runtime, &new_events).await?;
+
+        // Save the projection
+        let mut projection = TodoListRepository::fetch(runtime).await?;
+        projection.apply(&new_events);
         TodoListRepository::save(runtime, &projection).await?;
+
         Ok(())
     }
 }

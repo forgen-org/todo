@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct TaskIndex(pub usize);
 
 impl From<usize> for TaskIndex {
@@ -9,9 +9,9 @@ impl From<usize> for TaskIndex {
     }
 }
 
-impl Into<usize> for TaskIndex {
-    fn into(self) -> usize {
-        self.0
+impl From<TaskIndex> for usize {
+    fn from(value: TaskIndex) -> Self {
+        value.0
     }
 }
 
@@ -36,8 +36,8 @@ impl TryFrom<String> for TaskName {
     }
 }
 
-impl Into<String> for TaskName {
-    fn into(self) -> String {
-        self.0
+impl From<TaskName> for String {
+    fn from(value: TaskName) -> Self {
+        value.0
     }
 }

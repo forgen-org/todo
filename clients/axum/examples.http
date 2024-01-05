@@ -1,0 +1,32 @@
+### Retrieve all todolist
+GET http://localhost:3000/todolist HTTP/1.1
+
+### Create a new task
+POST http://localhost:3000/todolist HTTP/1.1
+content-type: application/json
+
+{
+    "AddTask": {
+        "name": "Some task"
+    }
+}
+
+### Complete a task
+POST http://localhost:3000/todolist HTTP/1.1
+content-type: application/json
+
+{
+    "CompleteTask": {
+        "index": 0
+    }
+}
+
+### Remove a task
+POST http://localhost:3000/todolist HTTP/1.1
+content-type: application/json
+
+{
+    "RemoveTask": {
+        "index": 0
+    }
+}
