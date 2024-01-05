@@ -1,12 +1,10 @@
 mod runtime;
 
-use application::{
-    commands::{AddTaskCommand, CompleteTaskCommand, RemoveTaskCommand},
-    ports::*,
-    queries::GetTodoListQuery,
-};
+use application::{command::Command, port::*, query::GetTodoListQuery};
 use axum::{
     extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -22,15 +20,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/todolist", get(get_todolist))
-        .route("/todolist/add", post(handle_command::<AddTaskCommand>))
-        .route(
-            "/todolist/remove",
-            post(handle_command::<RemoveTaskCommand>),
-        )
-        .route(
-            "/todolist/complete",
-            post(handle_command::<CompleteTaskCommand>),
-        )
+        .route("/todolist", post(handle_command))
         .with_state(runtime);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -48,15 +38,27 @@ async fn get_todolist(
         .map_err(|err| err.to_string())
 }
 
-async fn handle_command<T>(
+async fn handle_command(
     State(state): State<Arc<Runtime>>,
-    Json(command): Json<T>,
-) -> Result<(), String>
+    Json(command): Json<Command>,
+) -> Result<(), AppError> {
+    command.execute(state.as_ref()).await?;
+    Ok(())
+}
+
+struct AppError(AnyError);
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        (StatusCode::BAD_REQUEST, self.0.to_string()).into_response()
+    }
+}
+
+impl<E> From<E> for AppError
 where
-    T: Command<Runtime>,
+    E: Into<AnyError>,
 {
-    command
-        .execute(state.as_ref())
-        .await
-        .map_err(|err| err.to_string())
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
 }

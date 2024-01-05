@@ -1,4 +1,4 @@
-use application::ports::*;
+use application::port::*;
 use framework::*;
 use tokio::sync::Mutex;
 
@@ -12,7 +12,7 @@ pub struct MemStore {
 impl TodoListStore for MemStore {
     async fn pull(&self) -> AnyResult<TodoList> {
         let mut todolist = TodoList::default();
-        self.events.lock().await.apply(&mut todolist);
+        todolist.apply(&self.events.lock().await);
         Ok(todolist)
     }
 

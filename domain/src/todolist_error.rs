@@ -1,7 +1,12 @@
 use framework::*;
 
-#[derive(Debug, Error)]
+use crate::todolist_scalar::TaskIndex;
+
+#[derive(Debug, PartialEq, Error)]
 pub enum TodoListError {
-    #[error("Task name cannot be empty")]
-    EmptyTaskName,
+    #[error("Task already completed")]
+    TaskAlreadyCompleted(TaskIndex),
+
+    #[error("Task index out of bounds")]
+    TaskNotFound(TaskIndex),
 }

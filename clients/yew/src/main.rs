@@ -1,9 +1,6 @@
 mod runtime;
 
-use application::{
-    commands::{AddTaskCommand, CompleteTaskCommand, RemoveTaskCommand},
-    projections::TodoListProjection,
-};
+use application::{command::Command, projection::TodoListProjection};
 use framework::*;
 use runtime::Runtime;
 use web_sys::HtmlInputElement;
@@ -22,7 +19,7 @@ fn App() -> Html {
             let runtime = runtime.clone();
             let todo_list = todo_list.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                let query = application::queries::GetTodoListQuery {};
+                let query = application::query::GetTodoListQuery {};
                 let data = query.execute(runtime.as_ref()).await.unwrap();
                 todo_list.set(data);
             })
@@ -49,7 +46,7 @@ fn App() -> Html {
             wasm_bindgen_futures::spawn_local(async move {
                 let input = input_ref.cast::<HtmlInputElement>().unwrap();
                 let name = input.value();
-                let res = AddTaskCommand { name }.execute(runtime.as_ref()).await;
+                let res = Command::AddTask { name }.execute(runtime.as_ref()).await;
 
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
@@ -70,7 +67,7 @@ fn App() -> Html {
             let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
-                let res = CompleteTaskCommand { index }
+                let res = Command::CompleteTask { index }
                     .execute(runtime.as_ref())
                     .await;
 
@@ -92,7 +89,9 @@ fn App() -> Html {
             let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
-                let res = RemoveTaskCommand { index }.execute(runtime.as_ref()).await;
+                let res = Command::RemoveTask { index }
+                    .execute(runtime.as_ref())
+                    .await;
 
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
@@ -109,22 +108,23 @@ fn App() -> Html {
             <h2>{ "In Progress" }</h2>
             <ul>
                 {todo_list.clone().in_progress.iter().map(|task| {
-                    let task_index = task.index;
+                    let task_index = *task.0;
+                    let task_name = task.1.clone();
                     let complete_task = complete_task.clone().reform(move |_| task_index);
                     let remove_task = remove_task.clone().reform(move |_| task_index);
 
                     html! {
-                        <li key={task.index}>
+                        <li key={task_index}>
                             <input type="checkbox" onclick={complete_task} />
-                            { &task.name }
+                            { &task_name }
                             <a onclick={remove_task}>{ "❌" }</a>
                         </li>
                     }
                 }).collect::<Html>()}
             </ul>
             <h2>{ "Completed" }</h2>
-            {todo_list.clone().completed.iter().map(|task| html! {
-                <li><input type="checkbox" checked={true} disabled={true} /> { &task.name }</li>
+            {todo_list.clone().completed.values().map(|task_name| html! {
+                <li><input type="checkbox" checked={true} disabled={true} /> { &task_name }</li>
             }).collect::<Html>()}
             <input ref={input_ref} type="text" id="task" name="task" />
             <button onclick={add_task}>{ "Add Task" }</button>

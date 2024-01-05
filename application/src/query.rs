@@ -1,4 +1,4 @@
-use crate::{ports::TodoListRepository, projections::TodoListProjection};
+use crate::{port::TodoListRepository, projection::TodoListProjection};
 use framework::*;
 use serde::Deserialize;
 
@@ -6,7 +6,7 @@ use serde::Deserialize;
 pub struct GetTodoListQuery {}
 
 #[async_trait]
-impl<R> Query<R> for GetTodoListQuery
+impl<R> Execute<R> for GetTodoListQuery
 where
     R: TodoListRepository + Send + Sync,
 {
