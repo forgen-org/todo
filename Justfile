@@ -1,5 +1,8 @@
 axum: 
     cd clients/axum && cargo watch -x run
+
+ios:
+    PROJECT_DIR="${PWD}/clients/ios/TodoList" ./clients/ios/TodoList/build-rust.sh
     
 yew: 
     cd clients/yew && trunk serve
