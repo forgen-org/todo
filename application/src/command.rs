@@ -37,6 +37,9 @@ impl<R> Execute<R> for Command
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
+    type Error = AnyError;
+    type Output = ();
+
     async fn execute(&self, runtime: &R) -> AnyResult<()> {
         let message = self.try_into()?;
 

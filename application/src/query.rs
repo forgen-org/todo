@@ -10,6 +10,7 @@ impl<R> Execute<R> for GetTodoListQuery
 where
     R: TodoListRepository + Send + Sync,
 {
+    type Error = AnyError;
     type Output = TodoListProjection;
 
     async fn execute(&self, runtime: &R) -> AnyResult<TodoListProjection> {
