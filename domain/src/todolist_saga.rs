@@ -1,6 +1,6 @@
 use crate::{todolist_event::TodoListEvent, todolist_scalar::TaskIndex};
 
-pub struct TodoListSaga<'a>(pub &'a [TodoListEvent]);
+pub(crate) struct TodoListSaga<'a>(pub &'a [TodoListEvent]);
 
 pub(crate) enum TaskStatus {
     None,

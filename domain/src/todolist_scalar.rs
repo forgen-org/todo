@@ -2,10 +2,10 @@ use framework::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
-pub struct TaskIndex(pub usize);
+pub struct TaskIndex(pub u32);
 
-impl From<&usize> for TaskIndex {
-    fn from(value: &usize) -> Self {
+impl From<&u32> for TaskIndex {
+    fn from(value: &u32) -> Self {
         Self(*value)
     }
 }

@@ -2,7 +2,6 @@ use application::command::Command;
 use application::projection::TodoList;
 use application::query::GetTodoListQuery;
 use framework::*;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 mod runtime;
@@ -31,28 +30,7 @@ impl Client {
     }
 
     pub async fn get_todolist(&self) -> TodoList {
-        GetTodoListQuery {}
-            .execute(&self.runtime)
-            .await
-            .unwrap()
-            .into()
+        GetTodoListQuery {}.execute(&self.runtime).await.unwrap();
+        todo!()
     }
 }
-
-#[derive(uniffi::Object)]
-struct TodoList {
-    pub in_progress: HashMap<u32, String>,
-    pub completed: HashMap<u32, String>,
-}
-
-impl From<TodoList> for TodoList {
-    fn from(projection: TodoList) -> Self {
-        Self {
-            in_progress: projection.in_progress,
-            completed: projection.completed,
-        }
-    }
-}
-
-// #[uniffi::export]
-// pub struct Query(GetTodoListQuery);

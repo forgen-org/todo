@@ -1,6 +1,9 @@
 mod runtime;
 
-use application::{command::Command, projection::TodoList};
+use application::{
+    command::Command,
+    projection::{TaskStatus, TodoList},
+};
 use framework::*;
 use runtime::Runtime;
 use web_sys::HtmlInputElement;
@@ -62,7 +65,7 @@ fn App() -> Html {
         let fetch = fetch.clone();
         let runtime = runtime.clone();
 
-        Callback::from(move |index: usize| {
+        Callback::from(move |index| {
             let fetch = fetch.clone();
             let runtime = runtime.clone();
 
@@ -84,7 +87,7 @@ fn App() -> Html {
         let fetch = fetch.clone();
         let runtime = runtime.clone();
 
-        Callback::from(move |index: usize| {
+        Callback::from(move |index| {
             let fetch = fetch.clone();
             let runtime = runtime.clone();
 
@@ -107,9 +110,9 @@ fn App() -> Html {
             <h1>{ "Todo List" }</h1>
             <h2>{ "In Progress" }</h2>
             <ul>
-                {todo_list.clone().in_progress.iter().map(|task| {
-                    let task_index = *task.0;
-                    let task_name = task.1.clone();
+                {todo_list.clone().tasks.iter().filter(|task| task.status == TaskStatus::Created).map(|task| {
+                    let task_index = task.index;
+                    let task_name = task.name.clone();
                     let complete_task = complete_task.clone().reform(move |_| task_index);
                     let remove_task = remove_task.clone().reform(move |_| task_index);
 
@@ -123,8 +126,8 @@ fn App() -> Html {
                 }).collect::<Html>()}
             </ul>
             <h2>{ "Completed" }</h2>
-            {todo_list.clone().completed.values().map(|task_name| html! {
-                <li><input type="checkbox" checked={true} disabled={true} /> { &task_name }</li>
+            {todo_list.clone().tasks.iter().filter(|task| task.status == TaskStatus::Completed).map(|task| html! {
+                <li><input type="checkbox" checked={true} disabled={true} /> { &task.name }</li>
             }).collect::<Html>()}
             <input ref={input_ref} type="text" id="task" name="task" />
             <button onclick={add_task}>{ "Add Task" }</button>
