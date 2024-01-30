@@ -8,17 +8,60 @@
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text(sayHi())
+  @State private var todolist: String = "Loading..."
+
+  var client = Client()
+
+  var body: some View {
+      NavigationView {
+                  VStack {
+                      List(tasks) { task in
+                          Text(task.name)
+                      }
+
+                      HStack {
+                          TextField("Enter task name", text: $newTaskName)
+                              .textFieldStyle(RoundedBorderTextFieldStyle())
+                              .padding()
+
+                          Button(action: addTask) {
+                              Text("Send")
+                          }
+                          .padding()
+                      }
+                  }
+                  .navigationBarTitle("TodoList")
+              }
+      
+    VStack {
+      Text(todolist)
+      Button("Add Task") {
+        Task {
+            await addTask()
         }
-        .padding()
+      }
+
     }
+    .padding()
+    .onAppear {
+      loadTodoList()
+    }
+  }
+
+  private func loadTodoList() {
+    Task {
+      todolist = await client.getTodolist()
+    }
+  }
+
+  private func addTask() async {
+    await client.addTask(name: "Hello iOS")
+    let res = await client.getTodolist()
+    todolist = res
+}
+
 }
 
 #Preview {
-    ContentView()
+  ContentView()
 }

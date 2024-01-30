@@ -1,6 +1,6 @@
 mod runtime;
 
-use application::{command::Command, projection::TodoListProjection};
+use application::{command::Command, projection::TodoList};
 use framework::*;
 use runtime::Runtime;
 use web_sys::HtmlInputElement;
@@ -10,7 +10,7 @@ use yew::prelude::*;
 fn App() -> Html {
     let input_ref = use_node_ref();
     let runtime = use_memo((), |_| Runtime::default());
-    let todo_list = use_state(TodoListProjection::default);
+    let todo_list = use_state(TodoList::default);
 
     let fetch = {
         let runtime = runtime.clone();

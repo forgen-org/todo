@@ -22,12 +22,11 @@ impl TryInto<TodoListMessage> for &Command {
     fn try_into(self) -> Result<TodoListMessage, Self::Error> {
         Ok(match self {
             Command::AddTask { name } => TodoListMessage::AddTask(
-                name.clone()
-                    .try_into()
+                name.try_into()
                     .map_err(|_| CommandError::TaskNameCannotBeEmpty)?,
             ),
-            Command::RemoveTask { index } => TodoListMessage::RemoveTask((*index).into()),
-            Command::CompleteTask { index } => TodoListMessage::CompleteTask((*index).into()),
+            Command::RemoveTask { index } => TodoListMessage::RemoveTask(index.into()),
+            Command::CompleteTask { index } => TodoListMessage::CompleteTask(index.into()),
         })
     }
 }
@@ -37,15 +36,12 @@ impl<R> Execute<R> for Command
 where
     R: TodoListRepository + TodoListStore + Send + Sync,
 {
-    type Error = AnyError;
-    type Output = ();
-
     async fn execute(&self, runtime: &R) -> AnyResult<()> {
-        let message = self.try_into()?;
+        let message: TodoListMessage = self.try_into()?;
 
         // Pull the current state and apply the message
-        let todolist = TodoListStore::pull(runtime).await?;
-        let new_events = todolist.send(&message)?;
+        let events = TodoListStore::pull(runtime).await?;
+        let new_events = message.dispatch(&events)?;
         TodoListStore::push(runtime, &new_events).await?;
 
         // Save the projection

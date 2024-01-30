@@ -1,32 +1,24 @@
 pub extern crate auto_delegate;
 pub extern crate thiserror;
-use std::fmt::Display;
 
 pub use anyhow::{anyhow, Error as AnyError, Result as AnyResult};
 pub use async_trait::async_trait;
 pub use auto_delegate::*;
-use serde::{Deserialize, Serialize};
 pub use thiserror::*;
 
-pub trait State: Default + Serialize + for<'de> Deserialize<'de> {
-    type Error: Display;
-    type Event: Serialize + for<'de> Deserialize<'de>;
-    type Message;
-
-    fn apply(&mut self, events: &[Self::Event]);
-    fn send(&self, message: &Self::Message) -> Result<Vec<Self::Event>, Self::Error>;
+pub trait Dispatch<Event, Error = AnyError> {
+    fn dispatch(&self, events: &[Event]) -> Result<Vec<Event>, Error>;
 }
 
-pub trait Projection: Default + Serialize + for<'de> Deserialize<'de> {
-    type Event: Serialize + for<'de> Deserialize<'de>;
+pub trait Snapshot<Event, Error = AnyError>: Projection<Event> {
+    fn restore(&self) -> Result<Vec<Event>, Error>;
+}
 
-    fn apply(&mut self, events: &[Self::Event]);
+pub trait Projection<Event> {
+    fn apply(&mut self, events: &[Event]);
 }
 
 #[async_trait]
-pub trait Execute<R>: for<'de> Deserialize<'de> {
-    type Output;
-    type Error: Display;
-
-    async fn execute(&self, runtime: &R) -> Result<Self::Output, Self::Error>;
+pub trait Execute<R, T = (), E = AnyError> {
+    async fn execute(&self, runtime: &R) -> Result<T, E>;
 }
