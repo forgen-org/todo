@@ -23,4 +23,4 @@ cargo ndk -o android/app/src/main/jniLibs \
         build --release 
 
 # Create bindings
-cargo run --bin uniffi-bindgen generate --library ../../target/debug/libmobile.dylib --language kotlin --out-dir android/app/src/main/java/tech/forgen/todolist/rust
+cargo run --bin uniffi-bindgen generate --library ../../target/debug/libmobile.dylib --language kotlin --out-dir android/app/src/main/java/rust

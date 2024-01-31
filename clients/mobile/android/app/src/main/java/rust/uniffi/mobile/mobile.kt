@@ -29,6 +29,11 @@ import java.nio.ByteOrder
 import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
 // A rust-owned buffer is represented by its capacity, its current length, and a
@@ -377,12 +382,23 @@ internal interface _UniFFILib : Library {
             .also { lib: _UniFFILib ->
                 uniffiCheckContractApiVersion(lib)
                 uniffiCheckApiChecksums(lib)
+                uniffiRustFutureContinuationCallback.register(lib)
                 }
         }
     }
 
-    fun uniffi_mobile_fn_func_say_hi(_uniffi_out_err: RustCallStatus, 
-    ): RustBuffer.ByValue
+    fun uniffi_mobile_fn_free_client(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun uniffi_mobile_fn_constructor_client_new(_uniffi_out_err: RustCallStatus, 
+    ): Pointer
+    fun uniffi_mobile_fn_method_client_add_task(`ptr`: Pointer,`name`: RustBuffer.ByValue,
+    ): Pointer
+    fun uniffi_mobile_fn_method_client_complete_task(`ptr`: Pointer,`index`: Int,
+    ): Pointer
+    fun uniffi_mobile_fn_method_client_get_todo_list(`ptr`: Pointer,
+    ): Pointer
+    fun uniffi_mobile_fn_method_client_remove_task(`ptr`: Pointer,`index`: Int,
+    ): Pointer
     fun ffi_mobile_rustbuffer_alloc(`size`: Int,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun ffi_mobile_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,_uniffi_out_err: RustCallStatus, 
@@ -497,7 +513,15 @@ internal interface _UniFFILib : Library {
     ): Unit
     fun ffi_mobile_rust_future_complete_void(`handle`: Pointer,_uniffi_out_err: RustCallStatus, 
     ): Unit
-    fun uniffi_mobile_checksum_func_say_hi(
+    fun uniffi_mobile_checksum_method_client_add_task(
+    ): Short
+    fun uniffi_mobile_checksum_method_client_complete_task(
+    ): Short
+    fun uniffi_mobile_checksum_method_client_get_todo_list(
+    ): Short
+    fun uniffi_mobile_checksum_method_client_remove_task(
+    ): Short
+    fun uniffi_mobile_checksum_constructor_client_new(
     ): Short
     fun ffi_mobile_uniffi_contract_version(
     ): Int
@@ -516,15 +540,91 @@ private fun uniffiCheckContractApiVersion(lib: _UniFFILib) {
 
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
-    if (lib.uniffi_mobile_checksum_func_say_hi() != 28239.toShort()) {
+    if (lib.uniffi_mobile_checksum_method_client_add_task() != 11478.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_mobile_checksum_method_client_complete_task() != 8176.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_mobile_checksum_method_client_get_todo_list() != 36812.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_mobile_checksum_method_client_remove_task() != 23859.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_mobile_checksum_constructor_client_new() != 1538.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
 
 // Async support
+// Async return type handlers
+
+internal const val UNIFFI_RUST_FUTURE_POLL_READY = 0.toShort()
+internal const val UNIFFI_RUST_FUTURE_POLL_MAYBE_READY = 1.toShort()
+
+internal val uniffiContinuationHandleMap = UniFfiHandleMap<CancellableContinuation<Short>>()
+
+// FFI type for Rust future continuations
+internal object uniffiRustFutureContinuationCallback: UniFffiRustFutureContinuationCallbackType {
+    override fun callback(continuationHandle: USize, pollResult: Short) {
+        uniffiContinuationHandleMap.remove(continuationHandle)?.resume(pollResult)
+    }
+
+    internal fun register(lib: _UniFFILib) {
+        lib.ffi_mobile_rust_future_continuation_callback_set(this)
+    }
+}
+
+internal suspend fun<T, F, E: Exception> uniffiRustCallAsync(
+    rustFuture: Pointer,
+    pollFunc: (Pointer, USize) -> Unit,
+    completeFunc: (Pointer, RustCallStatus) -> F,
+    freeFunc: (Pointer) -> Unit,
+    liftFunc: (F) -> T,
+    errorHandler: CallStatusErrorHandler<E>
+): T {
+    try {
+        do {
+            val pollResult = suspendCancellableCoroutine<Short> { continuation ->
+                pollFunc(
+                    rustFuture,
+                    uniffiContinuationHandleMap.insert(continuation)
+                )
+            }
+        } while (pollResult != UNIFFI_RUST_FUTURE_POLL_READY);
+
+        return liftFunc(
+            rustCallWithError(errorHandler, { status -> completeFunc(rustFuture, status) })
+        )
+    } finally {
+        freeFunc(rustFuture)
+    }
+}
+
 
 // Public interface members begin here.
 
+
+public object FfiConverterUInt: FfiConverter<UInt, Int> {
+    override fun lift(value: Int): UInt {
+        return value.toUInt()
+    }
+
+    override fun read(buf: ByteBuffer): UInt {
+        return lift(buf.getInt())
+    }
+
+    override fun lower(value: UInt): Int {
+        return value.toInt()
+    }
+
+    override fun allocationSize(value: UInt) = 4
+
+    override fun write(value: UInt, buf: ByteBuffer) {
+        buf.putInt(value.toInt())
+    }
+}
 
 public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     // Note: we don't inherit from FfiConverterRustBuffer, because we use a
@@ -580,11 +680,479 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
-fun `sayHi`(): String {
-    return FfiConverterString.lift(
-    rustCall() { _status ->
-    _UniFFILib.INSTANCE.uniffi_mobile_fn_func_say_hi(_status)
-})
+
+// Interface implemented by anything that can contain an object reference.
+//
+// Such types expose a `destroy()` method that must be called to cleanly
+// dispose of the contained objects. Failure to call this method may result
+// in memory leaks.
+//
+// The easiest way to ensure this method is called is to use the `.use`
+// helper method to execute a block and destroy the object at the end.
+interface Disposable {
+    fun destroy()
+    companion object {
+        fun destroy(vararg args: Any?) {
+            args.filterIsInstance<Disposable>()
+                .forEach(Disposable::destroy)
+        }
+    }
 }
+
+inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
+    try {
+        block(this)
+    } finally {
+        try {
+            // N.B. our implementation is on the nullable type `Disposable?`.
+            this?.destroy()
+        } catch (e: Throwable) {
+            // swallow
+        }
+    }
+
+// The base class for all UniFFI Object types.
+//
+// This class provides core operations for working with the Rust `Arc<T>` pointer to
+// the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// the Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each `FFIObject` instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an `FFIObject` is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an `FFIObject` instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so will
+//     leak the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each `FFIObject` an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// In the future we may be able to replace some of this with automatic finalization logic, such as using
+// the new "Cleaner" functionaility in Java 9. The above scheme has been designed to work even if `destroy` is
+// invoked by garbage-collection machinery rather than by calling code (which by the way, it's apparently also
+// possible for the JVM to finalize an object while there is an in-flight call to one of its methods [1],
+// so there would still be some complexity here).
+//
+// Sigh...all of this for want of a robust finalization mechanism.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+abstract class FFIObject(
+    protected val pointer: Pointer
+): Disposable, AutoCloseable {
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    open protected fun freeRustArcPtr() {
+        // To be overridden in subclasses.
+    }
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                this.freeRustArcPtr()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.pointer)
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                this.freeRustArcPtr()
+            }
+        }
+    }
+}
+
+public interface ClientInterface {
+    @Throws(ErrorDto::class)
+    suspend fun `addTask`(`name`: String)@Throws(ErrorDto::class)
+    suspend fun `completeTask`(`index`: UInt)@Throws(ErrorDto::class)
+    suspend fun `getTodoList`(): TodoListDto@Throws(ErrorDto::class)
+    suspend fun `removeTask`(`index`: UInt)
+    companion object
+}
+
+class Client(
+    pointer: Pointer
+) : FFIObject(pointer), ClientInterface {
+    constructor() :
+        this(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_mobile_fn_constructor_client_new(_status)
+})
+
+    /**
+     * Disconnect the object from the underlying Rust object.
+     *
+     * It can be called more than once, but once called, interacting with the object
+     * causes an `IllegalStateException`.
+     *
+     * Clients **must** call this method once done with the object, or cause a memory leak.
+     */
+    override protected fun freeRustArcPtr() {
+        rustCall() { status ->
+            _UniFFILib.INSTANCE.uniffi_mobile_fn_free_client(this.pointer, status)
+        }
+    }
+
+    
+    @Throws(ErrorDto::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `addTask`(`name`: String) {
+        return uniffiRustCallAsync(
+            callWithPointer { thisPtr ->
+                _UniFFILib.INSTANCE.uniffi_mobile_fn_method_client_add_task(
+                    thisPtr,
+                    FfiConverterString.lower(`name`),
+                )
+            },
+            { future, continuation -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_poll_void(future, continuation) },
+            { future, continuation -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_complete_void(future, continuation) },
+            { future -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_free_void(future) },
+            // lift function
+            { Unit },
+            
+            // Error FFI converter
+            ErrorDto.ErrorHandler,
+        )
+    }
+    
+    @Throws(ErrorDto::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `completeTask`(`index`: UInt) {
+        return uniffiRustCallAsync(
+            callWithPointer { thisPtr ->
+                _UniFFILib.INSTANCE.uniffi_mobile_fn_method_client_complete_task(
+                    thisPtr,
+                    FfiConverterUInt.lower(`index`),
+                )
+            },
+            { future, continuation -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_poll_void(future, continuation) },
+            { future, continuation -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_complete_void(future, continuation) },
+            { future -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_free_void(future) },
+            // lift function
+            { Unit },
+            
+            // Error FFI converter
+            ErrorDto.ErrorHandler,
+        )
+    }
+    
+    @Throws(ErrorDto::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `getTodoList`() : TodoListDto {
+        return uniffiRustCallAsync(
+            callWithPointer { thisPtr ->
+                _UniFFILib.INSTANCE.uniffi_mobile_fn_method_client_get_todo_list(
+                    thisPtr,
+                    
+                )
+            },
+            { future, continuation -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_poll_rust_buffer(future, continuation) },
+            { future, continuation -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_complete_rust_buffer(future, continuation) },
+            { future -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_free_rust_buffer(future) },
+            // lift function
+            { FfiConverterTypeTodoListDTO.lift(it) },
+            // Error FFI converter
+            ErrorDto.ErrorHandler,
+        )
+    }
+    
+    @Throws(ErrorDto::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `removeTask`(`index`: UInt) {
+        return uniffiRustCallAsync(
+            callWithPointer { thisPtr ->
+                _UniFFILib.INSTANCE.uniffi_mobile_fn_method_client_remove_task(
+                    thisPtr,
+                    FfiConverterUInt.lower(`index`),
+                )
+            },
+            { future, continuation -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_poll_void(future, continuation) },
+            { future, continuation -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_complete_void(future, continuation) },
+            { future -> _UniFFILib.INSTANCE.ffi_mobile_rust_future_free_void(future) },
+            // lift function
+            { Unit },
+            
+            // Error FFI converter
+            ErrorDto.ErrorHandler,
+        )
+    }
+    
+
+    
+    companion object
+    
+}
+
+public object FfiConverterTypeClient: FfiConverter<Client, Pointer> {
+    override fun lower(value: Client): Pointer = value.callWithPointer { it }
+
+    override fun lift(value: Pointer): Client {
+        return Client(value)
+    }
+
+    override fun read(buf: ByteBuffer): Client {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: Client) = 8
+
+    override fun write(value: Client, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+
+
+data class TaskDto (
+    var `index`: UInt, 
+    var `name`: String, 
+    var `status`: TaskStatusDto
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeTaskDTO: FfiConverterRustBuffer<TaskDto> {
+    override fun read(buf: ByteBuffer): TaskDto {
+        return TaskDto(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeTaskStatusDTO.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TaskDto) = (
+            FfiConverterUInt.allocationSize(value.`index`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterTypeTaskStatusDTO.allocationSize(value.`status`)
+    )
+
+    override fun write(value: TaskDto, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`index`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterTypeTaskStatusDTO.write(value.`status`, buf)
+    }
+}
+
+
+
+
+data class TodoListDto (
+    var `tasks`: List<TaskDto>
+) {
+    
+    companion object
+}
+
+public object FfiConverterTypeTodoListDTO: FfiConverterRustBuffer<TodoListDto> {
+    override fun read(buf: ByteBuffer): TodoListDto {
+        return TodoListDto(
+            FfiConverterSequenceTypeTaskDTO.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TodoListDto) = (
+            FfiConverterSequenceTypeTaskDTO.allocationSize(value.`tasks`)
+    )
+
+    override fun write(value: TodoListDto, buf: ByteBuffer) {
+            FfiConverterSequenceTypeTaskDTO.write(value.`tasks`, buf)
+    }
+}
+
+
+
+
+
+sealed class ErrorDto: Exception() {
+    // Each variant is a nested class
+    
+    class Exception(
+        val `description`: String
+        ) : ErrorDto() {
+        override val message
+            get() = "description=${ `description` }"
+    }
+    
+
+    companion object ErrorHandler : CallStatusErrorHandler<ErrorDto> {
+        override fun lift(error_buf: RustBuffer.ByValue): ErrorDto = FfiConverterTypeErrorDTO.lift(error_buf)
+    }
+
+    
+}
+
+public object FfiConverterTypeErrorDTO : FfiConverterRustBuffer<ErrorDto> {
+    override fun read(buf: ByteBuffer): ErrorDto {
+        
+
+        return when(buf.getInt()) {
+            1 -> ErrorDto.Exception(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ErrorDto): Int {
+        return when(value) {
+            is ErrorDto.Exception -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`description`)
+            )
+        }
+    }
+
+    override fun write(value: ErrorDto, buf: ByteBuffer) {
+        when(value) {
+            is ErrorDto.Exception -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`description`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
+enum class TaskStatusDto {
+    CREATED,COMPLETED;
+    companion object
+}
+
+public object FfiConverterTypeTaskStatusDTO: FfiConverterRustBuffer<TaskStatusDto> {
+    override fun read(buf: ByteBuffer) = try {
+        TaskStatusDto.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: TaskStatusDto) = 4
+
+    override fun write(value: TaskStatusDto, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+public object FfiConverterSequenceTypeTaskDTO: FfiConverterRustBuffer<List<TaskDto>> {
+    override fun read(buf: ByteBuffer): List<TaskDto> {
+        val len = buf.getInt()
+        return List<TaskDto>(len) {
+            FfiConverterTypeTaskDTO.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TaskDto>): Int {
+        val sizeForLength = 4
+        val sizeForItems = value.map { FfiConverterTypeTaskDTO.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TaskDto>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.forEach {
+            FfiConverterTypeTaskDTO.write(it, buf)
+        }
+    }
+}
+
+
+
 
 
