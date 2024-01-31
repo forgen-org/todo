@@ -27,9 +27,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn get_todolist(
-    State(state): State<Arc<Runtime>>,
-) -> Result<Json<TodoListProjection>, String> {
+async fn get_todolist(State(state): State<Arc<Runtime>>) -> Result<Json<TodoList>, String> {
     let query = GetTodoListQuery {};
     query
         .execute(state.as_ref())

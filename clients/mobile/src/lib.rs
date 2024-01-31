@@ -1,6 +1,5 @@
-uniffi::setup_scaffolding!();
+mod client;
+mod dto;
+mod runtime;
 
-#[uniffi::export]
-fn say_hi() -> String {
-    "Hello from Rust!".to_string()
-}
+uniffi::setup_scaffolding!();

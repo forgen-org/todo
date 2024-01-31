@@ -1,6 +1,9 @@
 mod runtime;
 
-use application::{command::Command, projection::TodoListProjection};
+use application::{
+    command::Command,
+    projection::{TaskStatus, TodoList},
+};
 use framework::*;
 use runtime::Runtime;
 use web_sys::HtmlInputElement;
@@ -10,9 +13,9 @@ use yew::prelude::*;
 fn App() -> Html {
     let input_ref = use_node_ref();
     let runtime = use_memo((), |_| Runtime::default());
-    let todo_list = use_state(TodoListProjection::default);
+    let todo_list = use_state(TodoList::default);
 
-    let fetch = {
+    let fetch_task_list = {
         let runtime = runtime.clone();
         let todo_list = todo_list.clone();
         Callback::from(move |_: ()| {
@@ -27,19 +30,19 @@ fn App() -> Html {
     };
 
     {
-        let fetch = fetch.clone();
+        let fetch_task_list = fetch_task_list.clone();
         use_effect_with((), move |_| {
-            fetch.emit(());
+            fetch_task_list.emit(());
         });
     }
 
     let add_task = {
-        let fetch = fetch.clone();
+        let fetch_task_list = fetch_task_list.clone();
         let input_ref = input_ref.clone();
         let runtime = runtime.clone();
 
         Callback::from(move |_| {
-            let fetch = fetch.clone();
+            let fetch_task_list = fetch_task_list.clone();
             let input_ref = input_ref.clone();
             let runtime = runtime.clone();
 
@@ -51,7 +54,7 @@ fn App() -> Html {
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
                 } else {
-                    fetch.emit(());
+                    fetch_task_list.emit(());
                     input.set_value("");
                 }
             });
@@ -59,11 +62,11 @@ fn App() -> Html {
     };
 
     let complete_task = {
-        let fetch = fetch.clone();
+        let fetch_task_list = fetch_task_list.clone();
         let runtime = runtime.clone();
 
-        Callback::from(move |index: usize| {
-            let fetch = fetch.clone();
+        Callback::from(move |index| {
+            let fetch_task_list = fetch_task_list.clone();
             let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
@@ -74,18 +77,18 @@ fn App() -> Html {
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
                 } else {
-                    fetch.emit(());
+                    fetch_task_list.emit(());
                 }
             });
         })
     };
 
     let remove_task = {
-        let fetch = fetch.clone();
+        let fetch_task_list = fetch_task_list.clone();
         let runtime = runtime.clone();
 
-        Callback::from(move |index: usize| {
-            let fetch = fetch.clone();
+        Callback::from(move |index| {
+            let fetch_task_list = fetch_task_list.clone();
             let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
@@ -96,7 +99,7 @@ fn App() -> Html {
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
                 } else {
-                    fetch.emit(());
+                    fetch_task_list.emit(());
                 }
             });
         })
@@ -107,9 +110,9 @@ fn App() -> Html {
             <h1>{ "Todo List" }</h1>
             <h2>{ "In Progress" }</h2>
             <ul>
-                {todo_list.clone().in_progress.iter().map(|task| {
-                    let task_index = *task.0;
-                    let task_name = task.1.clone();
+                {todo_list.clone().tasks.iter().filter(|task| task.status == TaskStatus::Created).map(|task| {
+                    let task_index = task.index;
+                    let task_name = task.name.clone();
                     let complete_task = complete_task.clone().reform(move |_| task_index);
                     let remove_task = remove_task.clone().reform(move |_| task_index);
 
@@ -123,8 +126,8 @@ fn App() -> Html {
                 }).collect::<Html>()}
             </ul>
             <h2>{ "Completed" }</h2>
-            {todo_list.clone().completed.values().map(|task_name| html! {
-                <li><input type="checkbox" checked={true} disabled={true} /> { &task_name }</li>
+            {todo_list.clone().tasks.iter().filter(|task| task.status == TaskStatus::Completed).map(|task| html! {
+                <li><input type="checkbox" checked={true} disabled={true} /> { &task.name }</li>
             }).collect::<Html>()}
             <input ref={input_ref} type="text" id="task" name="task" />
             <button onclick={add_task}>{ "Add Task" }</button>

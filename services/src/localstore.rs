@@ -7,11 +7,9 @@ pub struct LocalStore {}
 
 #[async_trait]
 impl TodoListStore for LocalStore {
-    async fn pull(&self) -> AnyResult<TodoList> {
+    async fn pull(&self) -> AnyResult<Vec<TodoListEvent>> {
         let events: Vec<TodoListEvent> = LocalStorage::get("events").unwrap_or(vec![]);
-        let mut state = TodoList::default();
-        state.apply(&events);
-        Ok(state)
+        Ok(events)
     }
 
     async fn push(&self, events: &[TodoListEvent]) -> AnyResult<()> {
@@ -24,11 +22,11 @@ impl TodoListStore for LocalStore {
 
 #[async_trait]
 impl TodoListRepository for LocalStore {
-    async fn fetch(&self) -> AnyResult<TodoListProjection> {
+    async fn fetch(&self) -> AnyResult<TodoList> {
         Ok(LocalStorage::get("projection").unwrap_or_default())
     }
 
-    async fn save(&self, projection: &TodoListProjection) -> AnyResult<()> {
+    async fn save(&self, projection: &TodoList) -> AnyResult<()> {
         LocalStorage::set("projection", projection)?;
         Ok(())
     }

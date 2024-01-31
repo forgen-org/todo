@@ -1,32 +1,44 @@
 use domain::todolist_event::TodoListEvent;
 use framework::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct TodoListProjection {
-    pub in_progress: HashMap<usize, String>,
-    pub completed: HashMap<usize, String>,
+pub struct TodoList {
+    pub tasks: Vec<Task>,
 }
 
-impl Projection for TodoListProjection {
-    type Event = TodoListEvent;
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Task {
+    pub index: usize,
+    pub name: String,
+    pub status: TaskStatus,
+}
 
-    fn apply(&mut self, events: &[Self::Event]) {
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum TaskStatus {
+    Created,
+    Completed,
+}
+
+impl Projection<TodoListEvent> for TodoList {
+    fn apply(&mut self, events: &[TodoListEvent]) {
         for event in events {
             match event {
                 TodoListEvent::TaskAdded(index, name) => {
-                    self.in_progress
-                        .insert((*index).into(), name.clone().into());
+                    self.tasks.push(Task {
+                        index: index.0,
+                        name: name.into(),
+                        status: TaskStatus::Created,
+                    });
                 }
                 TodoListEvent::TaskCompleted(index) => {
-                    self.completed.insert(
-                        (*index).into(),
-                        self.in_progress.remove(&(*index).into()).unwrap(),
-                    );
+                    let task = self.tasks.iter_mut().find(|task| task.index == index.0);
+                    if let Some(task) = task {
+                        task.status = TaskStatus::Completed;
+                    }
                 }
                 TodoListEvent::TaskRemoved(index) => {
-                    self.in_progress.remove(&(*index).into());
+                    self.tasks.retain(|task| task.index != index.0);
                 }
             }
         }

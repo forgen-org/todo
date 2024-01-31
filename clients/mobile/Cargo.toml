@@ -10,5 +10,5 @@ name = "mobile"
 [dependencies]
 application = { path = "../../application" }
 framework = { path = "../../crates/framework" }
-services = { path = "../../services" }
+services = { path = "../../services", features = [ "memstore" ] }
 uniffi = { version = "0.25.3", features = [ "cli" ] }

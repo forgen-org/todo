@@ -297,6 +297,19 @@ private func uniffiCheckCallStatus(
 // Public interface members begin here.
 
 
+fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
+    typealias FfiType = UInt32
+    typealias SwiftType = UInt32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
 fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -335,12 +348,444 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
-public func sayHi()  -> String {
-    return try!  FfiConverterString.lift(
-        try! rustCall() {
-    uniffi_mobile_fn_func_say_hi($0)
+
+public protocol ClientProtocol {
+    func addTask(name: String) async throws
+    func completeTask(index: UInt32) async throws
+    func getTodoList() async throws -> TodoListDto
+    func removeTask(index: UInt32) async throws
+    
 }
-    )
+
+public class Client: ClientProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+    public convenience init()  {
+        self.init(unsafeFromRawPointer: try! rustCall() {
+    uniffi_mobile_fn_constructor_client_new($0)
+})
+    }
+
+    deinit {
+        try! rustCall { uniffi_mobile_fn_free_client(pointer, $0) }
+    }
+
+    
+
+    
+    
+
+    public func addTask(name: String) async throws {
+        return try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_mobile_fn_method_client_add_task(
+                    self.pointer,
+                    FfiConverterString.lower(name)
+                )
+            },
+            pollFunc: ffi_mobile_rust_future_poll_void,
+            completeFunc: ffi_mobile_rust_future_complete_void,
+            freeFunc: ffi_mobile_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeErrorDTO.lift
+        )
+    }
+
+    
+
+    public func completeTask(index: UInt32) async throws {
+        return try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_mobile_fn_method_client_complete_task(
+                    self.pointer,
+                    FfiConverterUInt32.lower(index)
+                )
+            },
+            pollFunc: ffi_mobile_rust_future_poll_void,
+            completeFunc: ffi_mobile_rust_future_complete_void,
+            freeFunc: ffi_mobile_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeErrorDTO.lift
+        )
+    }
+
+    
+
+    public func getTodoList() async throws -> TodoListDto {
+        return try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_mobile_fn_method_client_get_todo_list(
+                    self.pointer
+                )
+            },
+            pollFunc: ffi_mobile_rust_future_poll_rust_buffer,
+            completeFunc: ffi_mobile_rust_future_complete_rust_buffer,
+            freeFunc: ffi_mobile_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeTodoListDTO.lift,
+            errorHandler: FfiConverterTypeErrorDTO.lift
+        )
+    }
+
+    
+
+    public func removeTask(index: UInt32) async throws {
+        return try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_mobile_fn_method_client_remove_task(
+                    self.pointer,
+                    FfiConverterUInt32.lower(index)
+                )
+            },
+            pollFunc: ffi_mobile_rust_future_poll_void,
+            completeFunc: ffi_mobile_rust_future_complete_void,
+            freeFunc: ffi_mobile_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeErrorDTO.lift
+        )
+    }
+
+    
+}
+
+public struct FfiConverterTypeClient: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Client
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Client {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Client, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Client {
+        return Client(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Client) -> UnsafeMutableRawPointer {
+        return value.pointer
+    }
+}
+
+
+public func FfiConverterTypeClient_lift(_ pointer: UnsafeMutableRawPointer) throws -> Client {
+    return try FfiConverterTypeClient.lift(pointer)
+}
+
+public func FfiConverterTypeClient_lower(_ value: Client) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeClient.lower(value)
+}
+
+
+public struct TaskDto {
+    public var index: UInt32
+    public var name: String
+    public var status: TaskStatusDto
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(index: UInt32, name: String, status: TaskStatusDto) {
+        self.index = index
+        self.name = name
+        self.status = status
+    }
+}
+
+
+extension TaskDto: Equatable, Hashable {
+    public static func ==(lhs: TaskDto, rhs: TaskDto) -> Bool {
+        if lhs.index != rhs.index {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.status != rhs.status {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(index)
+        hasher.combine(name)
+        hasher.combine(status)
+    }
+}
+
+
+public struct FfiConverterTypeTaskDTO: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskDto {
+        return try TaskDto(
+            index: FfiConverterUInt32.read(from: &buf), 
+            name: FfiConverterString.read(from: &buf), 
+            status: FfiConverterTypeTaskStatusDTO.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskDto, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.index, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterTypeTaskStatusDTO.write(value.status, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeTaskDTO_lift(_ buf: RustBuffer) throws -> TaskDto {
+    return try FfiConverterTypeTaskDTO.lift(buf)
+}
+
+public func FfiConverterTypeTaskDTO_lower(_ value: TaskDto) -> RustBuffer {
+    return FfiConverterTypeTaskDTO.lower(value)
+}
+
+
+public struct TodoListDto {
+    public var tasks: [TaskDto]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(tasks: [TaskDto]) {
+        self.tasks = tasks
+    }
+}
+
+
+extension TodoListDto: Equatable, Hashable {
+    public static func ==(lhs: TodoListDto, rhs: TodoListDto) -> Bool {
+        if lhs.tasks != rhs.tasks {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(tasks)
+    }
+}
+
+
+public struct FfiConverterTypeTodoListDTO: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TodoListDto {
+        return try TodoListDto(
+            tasks: FfiConverterSequenceTypeTaskDTO.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TodoListDto, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeTaskDTO.write(value.tasks, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeTodoListDTO_lift(_ buf: RustBuffer) throws -> TodoListDto {
+    return try FfiConverterTypeTodoListDTO.lift(buf)
+}
+
+public func FfiConverterTypeTodoListDTO_lower(_ value: TodoListDto) -> RustBuffer {
+    return FfiConverterTypeTodoListDTO.lower(value)
+}
+
+public enum ErrorDto {
+
+    
+    
+    case Error(message: String)
+
+    fileprivate static func uniffiErrorHandler(_ error: RustBuffer) throws -> Error {
+        return try FfiConverterTypeErrorDTO.lift(error)
+    }
+}
+
+
+public struct FfiConverterTypeErrorDTO: FfiConverterRustBuffer {
+    typealias SwiftType = ErrorDto
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ErrorDto {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Error(
+            message: try FfiConverterString.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ErrorDto, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .Error(message):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(message, into: &buf)
+            
+        }
+    }
+}
+
+
+extension ErrorDto: Equatable, Hashable {}
+
+extension ErrorDto: Error { }
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum TaskStatusDto {
+    
+    case created
+    case completed
+}
+
+public struct FfiConverterTypeTaskStatusDTO: FfiConverterRustBuffer {
+    typealias SwiftType = TaskStatusDto
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskStatusDto {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .created
+        
+        case 2: return .completed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TaskStatusDto, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .created:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .completed:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+public func FfiConverterTypeTaskStatusDTO_lift(_ buf: RustBuffer) throws -> TaskStatusDto {
+    return try FfiConverterTypeTaskStatusDTO.lift(buf)
+}
+
+public func FfiConverterTypeTaskStatusDTO_lower(_ value: TaskStatusDto) -> RustBuffer {
+    return FfiConverterTypeTaskStatusDTO.lower(value)
+}
+
+
+extension TaskStatusDto: Equatable, Hashable {}
+
+
+
+fileprivate struct FfiConverterSequenceTypeTaskDTO: FfiConverterRustBuffer {
+    typealias SwiftType = [TaskDto]
+
+    public static func write(_ value: [TaskDto], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTaskDTO.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TaskDto] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TaskDto]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTaskDTO.read(from: &buf))
+        }
+        return seq
+    }
+}
+private let UNIFFI_RUST_FUTURE_POLL_READY: Int8 = 0
+private let UNIFFI_RUST_FUTURE_POLL_MAYBE_READY: Int8 = 1
+
+fileprivate func uniffiRustCallAsync<F, T>(
+    rustFutureFunc: () -> UnsafeMutableRawPointer,
+    pollFunc: (UnsafeMutableRawPointer, UnsafeMutableRawPointer) -> (),
+    completeFunc: (UnsafeMutableRawPointer, UnsafeMutablePointer<RustCallStatus>) -> F,
+    freeFunc: (UnsafeMutableRawPointer) -> (),
+    liftFunc: (F) throws -> T,
+    errorHandler: ((RustBuffer) throws -> Error)?
+) async throws -> T {
+    // Make sure to call uniffiEnsureInitialized() since future creation doesn't have a
+    // RustCallStatus param, so doesn't use makeRustCall()
+    uniffiEnsureInitialized()
+    let rustFuture = rustFutureFunc()
+    defer {
+        freeFunc(rustFuture)
+    }
+    var pollResult: Int8;
+    repeat {
+        pollResult = await withUnsafeContinuation {
+            pollFunc(rustFuture, ContinuationHolder($0).toOpaque())
+        }
+    } while pollResult != UNIFFI_RUST_FUTURE_POLL_READY
+
+    return try liftFunc(makeRustCall(
+        { completeFunc(rustFuture, $0) },
+        errorHandler: errorHandler
+    ))
+}
+
+// Callback handlers for an async calls.  These are invoked by Rust when the future is ready.  They
+// lift the return value or error and resume the suspended function.
+fileprivate func uniffiFutureContinuationCallback(ptr: UnsafeMutableRawPointer, pollResult: Int8) {
+    ContinuationHolder.fromOpaque(ptr).resume(pollResult)
+}
+
+// Wraps UnsafeContinuation in a class so that we can use reference counting when passing it across
+// the FFI
+fileprivate class ContinuationHolder {
+    let continuation: UnsafeContinuation<Int8, Never>
+
+    init(_ continuation: UnsafeContinuation<Int8, Never>) {
+        self.continuation = continuation
+    }
+
+    func resume(_ pollResult: Int8) {
+        self.continuation.resume(returning: pollResult)
+    }
+
+    func toOpaque() -> UnsafeMutableRawPointer {
+        return Unmanaged<ContinuationHolder>.passRetained(self).toOpaque()
+    }
+
+    static func fromOpaque(_ ptr: UnsafeRawPointer) -> ContinuationHolder {
+        return Unmanaged<ContinuationHolder>.fromOpaque(ptr).takeRetainedValue()
+    }
+}
+
+fileprivate func uniffiInitContinuationCallback() {
+    ffi_mobile_rust_future_continuation_callback_set(uniffiFutureContinuationCallback)
 }
 
 private enum InitializationResult {
@@ -358,10 +803,23 @@ private var initializationResult: InitializationResult {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_mobile_checksum_func_say_hi() != 28239) {
+    if (uniffi_mobile_checksum_method_client_add_task() != 11478) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_mobile_checksum_method_client_complete_task() != 8176) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_mobile_checksum_method_client_get_todo_list() != 36812) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_mobile_checksum_method_client_remove_task() != 23859) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_mobile_checksum_constructor_client_new() != 1538) {
         return InitializationResult.apiChecksumMismatch
     }
 
+    uniffiInitContinuationCallback()
     return InitializationResult.ok
 }
 
