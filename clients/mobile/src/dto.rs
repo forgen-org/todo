@@ -52,14 +52,14 @@ impl From<TaskStatus> for TaskStatusDTO {
 
 #[derive(Debug, Error, uniffi::Error)]
 pub enum ErrorDTO {
-    #[error("{message}")]
-    Error { message: String },
+    #[error("{description}")]
+    Error { description: String },
 }
 
 impl From<framework::AnyError> for ErrorDTO {
     fn from(error: framework::AnyError) -> Self {
         Self::Error {
-            message: error.to_string(),
+            description: error.to_string(),
         }
     }
 }

@@ -80,8 +80,8 @@ struct ContentView: View {
   private func handleError(_ error: Error) {
     if let errorDto = error as? ErrorDto {
       switch errorDto {
-      case .Error(let message):
-        errorMessage = message
+      case .Error(let description):
+        errorMessage = description
       }
       showError = true
     } else {
