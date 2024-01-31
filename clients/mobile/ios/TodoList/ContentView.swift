@@ -8,57 +8,88 @@
 import SwiftUI
 
 struct ContentView: View {
-  @State private var todolist: String = "Loading..."
+  @State private var errorMessage: String = ""
+  @State private var newTaskName: String = ""
+  @State private var showError: Bool = false
+  @State private var todolist: TodoListDto?
 
   var client = Client()
 
   var body: some View {
-      NavigationView {
-                  VStack {
-                      List(tasks) { task in
-                          Text(task.name)
-                      }
+    NavigationView {
+      VStack {
+        List {
+          ForEach(todolist?.tasks ?? [], id: \.index) { task in
+            HStack {
+              Text(task.name)
 
-                      HStack {
-                          TextField("Enter task name", text: $newTaskName)
-                              .textFieldStyle(RoundedBorderTextFieldStyle())
-                              .padding()
+              Spacer()
 
-                          Button(action: addTask) {
-                              Text("Send")
-                          }
-                          .padding()
+              Toggle(
+                "",
+                isOn: Binding(
+                  get: { task.status == .completed },
+                  set: { _, _ in
+                    Task {
+                      do {
+                        try await client.completeTask(index: task.index)
+                        todolist = try await client.getTodoList()
+                      } catch {
+                        handleError(error)
                       }
-                  }
-                  .navigationBarTitle("TodoList")
+                    }
+                  })
+              )
+              .labelsHidden()
+            }
+          }
+        }
+
+        HStack {
+          TextField("Enter task name", text: $newTaskName)
+            .textFieldStyle(RoundedBorderTextFieldStyle())
+            .padding()
+
+          Button(
+            action: {
+              Task {
+                do {
+                  try await client.addTask(name: newTaskName)
+                  todolist = try await client.getTodoList()
+                  newTaskName = ""
+                } catch {
+                  handleError(error)
+                }
               }
-      
-    VStack {
-      Text(todolist)
-      Button("Add Task") {
-        Task {
-            await addTask()
+            },
+            label: {
+              Text("Add")
+            }
+          )
+          .padding()
         }
       }
-
-    }
-    .padding()
-    .onAppear {
-      loadTodoList()
-    }
-  }
-
-  private func loadTodoList() {
-    Task {
-      todolist = await client.getTodolist()
+      .navigationBarTitle("TodoList")
+      .alert(isPresented: $showError) {
+        Alert(
+          title: Text("Error"), message: Text(errorMessage), dismissButton: .default(Text("OK")))
+      }
     }
   }
 
-  private func addTask() async {
-    await client.addTask(name: "Hello iOS")
-    let res = await client.getTodolist()
-    todolist = res
-}
+  private func handleError(_ error: Error) {
+    if let errorDto = error as? ErrorDto {
+      switch errorDto {
+      case .Error(let message):
+        errorMessage = message
+      }
+      showError = true
+    } else {
+      // Handle other errors
+      errorMessage = error.localizedDescription
+      showError = true
+    }
+  }
 
 }
 

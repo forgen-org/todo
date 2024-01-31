@@ -6,8 +6,8 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub enum Command {
     AddTask { name: String },
-    RemoveTask { index: u32 },
-    CompleteTask { index: u32 },
+    RemoveTask { index: usize },
+    CompleteTask { index: usize },
 }
 
 #[derive(Debug, Error)]

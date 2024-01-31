@@ -84,7 +84,6 @@ dependencies = [
  "domain",
  "framework",
  "serde",
- "uniffi",
 ]
 
 [[package]]

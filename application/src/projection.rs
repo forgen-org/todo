@@ -2,19 +2,19 @@ use domain::todolist_event::TodoListEvent;
 use framework::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, uniffi::Record)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct TodoList {
     pub tasks: Vec<Task>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Task {
-    pub index: u32,
+    pub index: usize,
     pub name: String,
     pub status: TaskStatus,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, uniffi::Enum)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum TaskStatus {
     Created,
     Completed,

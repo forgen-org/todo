@@ -2,6 +2,7 @@ use crate::{port::TodoListRepository, projection::TodoList};
 use framework::*;
 use serde::Deserialize;
 
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 #[derive(Deserialize)]
 pub struct GetTodoListQuery {}
 
