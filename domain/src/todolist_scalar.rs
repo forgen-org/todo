@@ -31,8 +31,8 @@ impl TryFrom<&String> for TaskName {
     }
 }
 
-impl Into<String> for &TaskName {
-    fn into(self) -> String {
-        self.0.clone()
+impl From<&TaskName> for String {
+    fn from(value: &TaskName) -> Self {
+        value.0.clone()
     }
 }

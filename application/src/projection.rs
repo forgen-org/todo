@@ -32,12 +32,10 @@ impl Projection<TodoListEvent> for TodoList {
                     });
                 }
                 TodoListEvent::TaskCompleted(index) => {
-                    let task = self
-                        .tasks
-                        .iter_mut()
-                        .find(|task| task.index == index.0)
-                        .unwrap();
-                    task.status = TaskStatus::Completed;
+                    let task = self.tasks.iter_mut().find(|task| task.index == index.0);
+                    if let Some(task) = task {
+                        task.status = TaskStatus::Completed;
+                    }
                 }
                 TodoListEvent::TaskRemoved(index) => {
                     self.tasks.retain(|task| task.index != index.0);

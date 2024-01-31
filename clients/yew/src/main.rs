@@ -15,7 +15,7 @@ fn App() -> Html {
     let runtime = use_memo((), |_| Runtime::default());
     let todo_list = use_state(TodoList::default);
 
-    let fetch = {
+    let fetch_task_list = {
         let runtime = runtime.clone();
         let todo_list = todo_list.clone();
         Callback::from(move |_: ()| {
@@ -30,19 +30,19 @@ fn App() -> Html {
     };
 
     {
-        let fetch = fetch.clone();
+        let fetch_task_list = fetch_task_list.clone();
         use_effect_with((), move |_| {
-            fetch.emit(());
+            fetch_task_list.emit(());
         });
     }
 
     let add_task = {
-        let fetch = fetch.clone();
+        let fetch_task_list = fetch_task_list.clone();
         let input_ref = input_ref.clone();
         let runtime = runtime.clone();
 
         Callback::from(move |_| {
-            let fetch = fetch.clone();
+            let fetch_task_list = fetch_task_list.clone();
             let input_ref = input_ref.clone();
             let runtime = runtime.clone();
 
@@ -54,7 +54,7 @@ fn App() -> Html {
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
                 } else {
-                    fetch.emit(());
+                    fetch_task_list.emit(());
                     input.set_value("");
                 }
             });
@@ -62,11 +62,11 @@ fn App() -> Html {
     };
 
     let complete_task = {
-        let fetch = fetch.clone();
+        let fetch_task_list = fetch_task_list.clone();
         let runtime = runtime.clone();
 
         Callback::from(move |index| {
-            let fetch = fetch.clone();
+            let fetch_task_list = fetch_task_list.clone();
             let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
@@ -77,18 +77,18 @@ fn App() -> Html {
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
                 } else {
-                    fetch.emit(());
+                    fetch_task_list.emit(());
                 }
             });
         })
     };
 
     let remove_task = {
-        let fetch = fetch.clone();
+        let fetch_task_list = fetch_task_list.clone();
         let runtime = runtime.clone();
 
         Callback::from(move |index| {
-            let fetch = fetch.clone();
+            let fetch_task_list = fetch_task_list.clone();
             let runtime = runtime.clone();
 
             wasm_bindgen_futures::spawn_local(async move {
@@ -99,7 +99,7 @@ fn App() -> Html {
                 if let Err(err) = res {
                     gloo_console::error!(&err.to_string());
                 } else {
-                    fetch.emit(());
+                    fetch_task_list.emit(());
                 }
             });
         })
